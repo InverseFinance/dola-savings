@@ -4,6 +4,7 @@ pragma solidity 0.8.21;
 interface IERC20 {
     function transfer(address, uint) external returns (bool);
     function transferFrom(address, address, uint) external returns (bool);
+    function balanceOf(address) external view returns (uint);
 }
 
 interface IDBR {
@@ -17,7 +18,7 @@ contract DolaSavings {
     address public gov;
     address public operator;
     uint public constant mantissa = 10**18;
-    uint public maxYearlyRewardBudget = type(uint).max / 10000; // 10,000 years
+    uint public maxYearlyRewardBudget;
     uint public maxRewardPerDolaMantissa = 10**18; // 1 DBR per DOLA
     uint public yearlyRewardBudget; // starts at 0
     uint public lastUpdate;
@@ -34,7 +35,7 @@ contract DolaSavings {
             if(yearlyRewardBudget > 0 && totalSupply > 0) {
                 uint maxBudget = maxRewardPerDolaMantissa * totalSupply / mantissa;
                 uint budget = yearlyRewardBudget > maxBudget ? maxBudget : yearlyRewardBudget;
-                uint rewardsAccrued = deltaT * (budget / 365 days) * mantissa;
+                uint rewardsAccrued = deltaT * budget * mantissa / 365 days;
                 rewardIndexMantissa += rewardsAccrued / totalSupply;
             }
             lastUpdate = block.timestamp;
@@ -58,9 +59,9 @@ contract DolaSavings {
         _;
     }
 
-    constructor (IDBR _dbr, IERC20 _dola, address _gov, address _operator) {
-        dbr = _dbr;
-        dola = _dola;
+    constructor (address _dbr, address _dola, address _gov, address _operator) {
+        dbr = IDBR(_dbr);
+        dola = IERC20(_dola);
         gov = _gov;
         operator = _operator;
         lastUpdate = block.timestamp;
@@ -69,7 +70,7 @@ contract DolaSavings {
     function setOperator(address _operator) public onlyGov { operator = _operator; }
     function setGov(address _gov) public onlyGov { gov = _gov; }
 
-    function setMaxYearlyRewardBudgetConstraints(uint _max) public onlyGov updateIndex {
+    function setMaxYearlyRewardBudget(uint _max) public onlyGov updateIndex {
         require(_max < type(uint).max / 10000); // cannot overflow and revert within 10,000 years
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
@@ -102,7 +103,7 @@ contract DolaSavings {
         uint deltaT = block.timestamp - lastUpdate;
         uint maxBudget = maxRewardPerDolaMantissa * totalSupply / mantissa;
         uint budget = yearlyRewardBudget > maxBudget ? maxBudget : yearlyRewardBudget;
-        uint rewardsAccrued = deltaT * (budget / 365 days) * mantissa;
+        uint rewardsAccrued = deltaT * budget * mantissa / 365 days;
         uint _rewardIndexMantissa = totalSupply > 0 ? rewardIndexMantissa + (rewardsAccrued / totalSupply) : rewardIndexMantissa;
         uint deltaIndex = _rewardIndexMantissa - stakerIndexMantissa[user];
         uint bal = balanceOf[user];
@@ -113,6 +114,13 @@ contract DolaSavings {
     function claim(address to) public updateIndex {
         dbr.mint(to, accruedRewards[msg.sender]);
         accruedRewards[msg.sender] = 0;
+    }
+
+    function sweep(address token, uint amount, address to) public onlyGov {
+        if(token == address(dola)) {
+            require(IERC20(token).balanceOf(address(this)) - totalSupply >= amount, "CANNOT SWEEP USER DOLA");
+        }
+        IERC20(token).transfer(to, amount);
     }
 
 }
