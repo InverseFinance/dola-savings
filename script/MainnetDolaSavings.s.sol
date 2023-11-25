@@ -5,7 +5,6 @@ import {Script, console2} from "forge-std/Script.sol";
 import {DolaSavings} from "../src/DolaSavings.sol";
 
 contract DolaSavingsScript is Script {
-    function setUp() public {}
 
     function run() public {
 
@@ -15,7 +14,7 @@ contract DolaSavingsScript is Script {
         address operator = 0x8F97cCA30Dbe80e7a8B462F1dD1a51C32accDfC8;
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
         new DolaSavings(
             dbr,
