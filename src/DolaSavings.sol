@@ -29,7 +29,7 @@ contract DolaSavings {
     mapping (address => uint) public stakerIndexMantissa;
     mapping (address => uint) public accruedRewards;
     
-    modifier updateIndex() {
+    modifier updateIndex(address user) {
         uint deltaT = block.timestamp - lastUpdate;
         if(deltaT > 0) {
             if(yearlyRewardBudget > 0 && totalSupply > 0) {
@@ -41,11 +41,11 @@ contract DolaSavings {
             lastUpdate = block.timestamp;
         }
 
-        uint deltaIndex = rewardIndexMantissa - stakerIndexMantissa[msg.sender];
-        uint bal = balanceOf[msg.sender];
+        uint deltaIndex = rewardIndexMantissa - stakerIndexMantissa[user];
+        uint bal = balanceOf[user];
         uint stakerDelta = bal * deltaIndex;
-        stakerIndexMantissa[msg.sender] = rewardIndexMantissa;
-        accruedRewards[msg.sender] += stakerDelta / mantissa;
+        stakerIndexMantissa[user] = rewardIndexMantissa;
+        accruedRewards[user] += stakerDelta / mantissa;
         _;
     }
 
@@ -70,7 +70,7 @@ contract DolaSavings {
     function setOperator(address _operator) public onlyGov { operator = _operator; }
     function setGov(address _gov) public onlyGov { gov = _gov; }
 
-    function setMaxYearlyRewardBudget(uint _max) public onlyGov updateIndex {
+    function setMaxYearlyRewardBudget(uint _max) public onlyGov updateIndex(msg.sender) {
         require(_max < type(uint).max / 10000); // cannot overflow and revert within 10,000 years
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
@@ -78,22 +78,22 @@ contract DolaSavings {
         }
     }
 
-    function setMaxRewardPerDolaMantissa(uint _max) public onlyGov updateIndex {
+    function setMaxRewardPerDolaMantissa(uint _max) public onlyGov updateIndex(msg.sender) {
         maxRewardPerDolaMantissa = _max;
     }
 
-    function setYearlyRewardBudget(uint _yearlyRewardBudget) public onlyOperator updateIndex {
+    function setYearlyRewardBudget(uint _yearlyRewardBudget) public onlyOperator updateIndex(msg.sender) {
         require(_yearlyRewardBudget <= maxYearlyRewardBudget, "REWARD BUDGET ABOVE MAX");
         yearlyRewardBudget = _yearlyRewardBudget;
     }
 
-    function stake(uint amount, address recipient) public updateIndex {
+    function stake(uint amount, address recipient) public updateIndex(recipient) {
         balanceOf[recipient] += amount;
         totalSupply += amount;
         dola.transferFrom(msg.sender, address(this), amount);
     }
 
-    function unstake(uint amount) public updateIndex {
+    function unstake(uint amount) public updateIndex(msg.sender) {
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
         dola.transfer(msg.sender, amount);
@@ -111,7 +111,7 @@ contract DolaSavings {
         return (accruedRewards[user] + stakerDelta);
     }
 
-    function claim(address to) public updateIndex {
+    function claim(address to) public updateIndex(msg.sender) {
         dbr.mint(to, accruedRewards[msg.sender]);
         accruedRewards[msg.sender] = 0;
     }
