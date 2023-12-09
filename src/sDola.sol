@@ -21,6 +21,7 @@ contract sDola is ERC4626 {
     uint public prevK;
     uint public targetK;
     uint public lastKUpdate;
+    mapping (uint => uint) public dailyRevenue;
 
     constructor(
         address _dola,
@@ -51,7 +52,10 @@ contract sDola is ERC4626 {
     }
 
     function totalAssets() public view override returns (uint) {
-        return savings.balanceOf(address(this));
+        uint day = block.timestamp / 1 days;
+        uint timeElapsed = block.timestamp - (day * 1 days);
+        uint remainingLastRevenue = dailyRevenue[day - 1] * (1 days - timeElapsed) / 1 days;
+        return savings.balanceOf(address(this)) - remainingLastRevenue - dailyRevenue[day];
     }
 
     function getK() public view returns (uint) {
@@ -88,6 +92,7 @@ contract sDola is ERC4626 {
         require(dolaReserve * dbrReserve >= getK(), "Invariant");
         asset.transferFrom(msg.sender, address(this), exactDolaIn);
         savings.stake(exactDolaIn, address(this));
+        dailyRevenue[block.timestamp / 1 days] += exactDolaIn;
         dbr.transfer(to, exactDbrOut);
         emit Buy(msg.sender, to, exactDolaIn, exactDbrOut);
     }
