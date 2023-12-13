@@ -100,6 +100,10 @@ contract sDola is ERC4626 {
         asset.approve(address(savings), type(uint).max);
     }
 
+    function getRate() external view returns (uint) {
+        return convertToAssets(1e18);
+    }
+
     event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
 
 }
