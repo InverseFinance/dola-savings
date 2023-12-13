@@ -73,6 +73,7 @@ contract sDolaTest is Test {
     }
 
     function test_buyDBR(uint exactDolaIn, uint exactDbrOut) public {
+        vm.warp(7 days); // for totalAssets()
         dbr.mint(address(sdola), 1e18);
         assertEq(sdola.getDbrReserve(), 1e18, "dbr reserve");
         exactDbrOut = bound(exactDbrOut, 1, sdola.getDbrReserve());
@@ -93,6 +94,20 @@ contract sDolaTest is Test {
             assertEq(dbr.balanceOf(address(1)), exactDbrOut, "dbr balance");
             assertEq(sdola.getDbrReserve(), newDbrReserve, "dbr reserve");
             assertEq(sdola.getDolaReserve(), sdola.getK() / newDbrReserve, "dola reserve");
+            assertEq(sdola.weeklyRevenue(block.timestamp / 7 days), exactDolaIn, "weekly revenue");
+            assertEq(sdola.totalAssets(), 0, "total assets");
+            vm.warp(14 days);
+            assertEq(sdola.totalAssets(), 0, "total assets");
+            vm.warp(14 days + (7 days / 4));
+            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 4, 1, "total assets");
+            vm.warp(14 days + (7 days / 2));
+            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 2, 1, "total assets");
+            vm.warp(21 days);
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
+            vm.warp(21 days + 1);
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
+            vm.warp(28 days);
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
         }
     }
 
@@ -135,6 +150,7 @@ contract sDolaTest is Test {
     }
 
     function test_totalAssets(uint amount) public {
+        vm.warp(7 days); // for totalAssets()
         amount = bound(amount, 1, type(uint).max);
         assertEq(sdola.totalAssets(), 0);
         dola.mint(address(this), amount);
@@ -144,6 +160,7 @@ contract sDolaTest is Test {
     }
 
     function test_deposit(uint amount) public {
+        vm.warp(7 days); // for totalAssets()
         amount = bound(amount, 1, type(uint).max);
         uint shares = sdola.convertToShares(amount);
         dola.mint(address(this), amount);
@@ -156,6 +173,7 @@ contract sDolaTest is Test {
     }
 
     function test_mint(uint shares) public {
+        vm.warp(7 days); // for totalAssets()
         shares = bound(shares, 1, type(uint).max);
         uint amount = sdola.convertToAssets(shares);
         dola.mint(address(this), amount);
@@ -181,6 +199,7 @@ contract sDolaTest is Test {
     }
 
     function test_withdraw(uint amount) public {
+        vm.warp(7 days); // for totalAssets()
         uint MIN_BALANCE = 1e16; // 1 cent
         amount = bound(amount, MIN_BALANCE + 1, sqrt(type(uint).max));
         uint shares = sdola.convertToShares(amount);
@@ -203,6 +222,7 @@ contract sDolaTest is Test {
     }
 
     function test_redeem(uint shares) public {
+        vm.warp(7 days); // for totalAssets()
         uint MIN_BALANCE = 1e16; // 1 cent
         shares = bound(shares, MIN_BALANCE + 1, sdola.convertToShares(sqrt(type(uint).max)));
         uint amount = sdola.convertToAssets(shares);
