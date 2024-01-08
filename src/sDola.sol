@@ -87,9 +87,11 @@ contract sDola is ERC4626 {
 
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
         savings.claim(address(this));
-        uint dolaReserve = getDolaReserve() + exactDolaIn;
-        uint dbrReserve = getDbrReserve() - exactDbrOut;
-        require(dolaReserve * dbrReserve >= getK(), "Invariant");
+        uint k = getK();
+        uint dbrBalance = dbr.balanceOf(address(this));
+        uint dbrReserve = dbrBalance - exactDbrOut;
+        uint dolaReserve = k / dbrBalance + exactDolaIn;
+        require(dolaReserve * dbrReserve >= k, "Invariant");
         asset.transferFrom(msg.sender, address(this), exactDolaIn);
         savings.stake(exactDolaIn, address(this));
         weeklyRevenue[block.timestamp / 7 days] += exactDolaIn;
