@@ -74,6 +74,10 @@ contract sDola is ERC4626 {
         return getK() / getDbrReserve();
     }
 
+    function getDolaReserve(uint dbrReserve) public view returns (uint) {
+        return getK() / dbrReserve;
+    }
+
     function getDbrReserve() public view returns (uint) {
         return dbr.balanceOf(address(this)) + savings.claimable(address(this));
     }
