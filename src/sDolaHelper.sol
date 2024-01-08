@@ -4,6 +4,7 @@ pragma solidity 0.8.21;
 interface IsDola {
     function asset() external view returns (address);
     function getDolaReserve() external view returns (uint);
+    function getDolaReserve(uint dbrReserve) external view returns (uint);
     function getDbrReserve() external view returns (uint);
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external;
 }
@@ -28,8 +29,8 @@ contract sDolaHelper {
     
     function getDbrOut(uint dolaIn) public view returns (uint dbrOut) {
         require(dolaIn > 0, "dolaIn must be positive");
-        uint dolaReserve = sDola.getDolaReserve();
         uint dbrReserve = sDola.getDbrReserve();
+        uint dolaReserve = sDola.getDolaReserve(dbrReserve);
         uint numerator = dolaIn * dbrReserve;
         uint denominator = dolaReserve + dolaIn;
         dbrOut = numerator / denominator;
@@ -37,8 +38,8 @@ contract sDolaHelper {
 
     function getDolaIn(uint dbrOut) public view returns (uint dolaIn) {
         require(dbrOut > 0, "dbrOut must be positive");
-        uint dolaReserve = sDola.getDolaReserve();
         uint dbrReserve = sDola.getDbrReserve();
+        uint dolaReserve = sDola.getDolaReserve(dbrReserve);
         uint numerator = dbrOut * dolaReserve;
         uint denominator = dbrReserve - dbrOut;
         dolaIn = (numerator / denominator) + 1;
