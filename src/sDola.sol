@@ -53,7 +53,7 @@ contract sDola is ERC4626 {
 
     function totalAssets() public view override returns (uint) {
         uint week = block.timestamp / 7 days;
-        uint timeElapsed = block.timestamp - (week * 7 days);
+        uint timeElapsed = block.timestamp % 7 days;
         uint remainingLastRevenue = weeklyRevenue[week - 1] * (7 days - timeElapsed) / 7 days;
         return savings.balanceOf(address(this)) - remainingLastRevenue - weeklyRevenue[week];
     }
