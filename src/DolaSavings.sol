@@ -33,10 +33,12 @@ contract DolaSavings {
         uint deltaT = block.timestamp - lastUpdate;
         if(deltaT > 0) {
             if(yearlyRewardBudget > 0 && totalSupply > 0) {
-                uint maxBudget = maxRewardPerDolaMantissa * totalSupply / mantissa;
-                uint budget = yearlyRewardBudget > maxBudget ? maxBudget : yearlyRewardBudget;
+                uint _totalSupply = totalSupply;
+                uint _yearlyRewardBudget = yearlyRewardBudget;
+                uint maxBudget = maxRewardPerDolaMantissa * _totalSupply / mantissa;
+                uint budget = _yearlyRewardBudget > maxBudget ? maxBudget : _yearlyRewardBudget;
                 uint rewardsAccrued = deltaT * budget * mantissa / 365 days;
-                rewardIndexMantissa += rewardsAccrued / totalSupply;
+                rewardIndexMantissa += rewardsAccrued / _totalSupply;
             }
             lastUpdate = block.timestamp;
         }
@@ -100,11 +102,14 @@ contract DolaSavings {
     }
 
     function claimable(address user) public view returns(uint) {
+        uint _totalSupply = totalSupply;
+        uint _yearlyRewardBudget = yearlyRewardBudget;
+        uint _rewardIndexMantissa = rewardIndexMantissa;
         uint deltaT = block.timestamp - lastUpdate;
-        uint maxBudget = maxRewardPerDolaMantissa * totalSupply / mantissa;
-        uint budget = yearlyRewardBudget > maxBudget ? maxBudget : yearlyRewardBudget;
+        uint maxBudget = maxRewardPerDolaMantissa * _totalSupply / mantissa;
+        uint budget = _yearlyRewardBudget > maxBudget ? maxBudget : _yearlyRewardBudget;
         uint rewardsAccrued = deltaT * budget * mantissa / 365 days;
-        uint _rewardIndexMantissa = totalSupply > 0 ? rewardIndexMantissa + (rewardsAccrued / totalSupply) : rewardIndexMantissa;
+        _rewardIndexMantissa = _totalSupply > 0 ? _rewardIndexMantissa + rewardsAccrued / _totalSupply : _rewardIndexMantissa;
         uint deltaIndex = _rewardIndexMantissa - stakerIndexMantissa[user];
         uint bal = balanceOf[user];
         uint stakerDelta = bal * deltaIndex / mantissa;
