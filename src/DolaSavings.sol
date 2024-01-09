@@ -79,6 +79,7 @@ contract DolaSavings {
     }
 
     function setMaxRewardPerDolaMantissa(uint _max) public onlyGov updateIndex(msg.sender) {
+        require(_max < type(uint).max / (mantissa * 10 ** 13); //May overflow if set to max and more than 10 trillion DOLA has been deposited
         maxRewardPerDolaMantissa = _max;
     }
 
