@@ -63,11 +63,10 @@ contract sDola is ERC4626 {
         uint timeElapsed = block.timestamp - lastKUpdate;
         if(timeElapsed > duration) {
             return targetK;
-        } else {
-            uint targetWeight = timeElapsed;
-            uint prevWeight = duration - timeElapsed;
-            return (prevK * prevWeight + targetK * targetWeight) / duration;
         }
+        uint targetWeight = timeElapsed;
+        uint prevWeight = duration - timeElapsed;
+        return (prevK * prevWeight + targetK * targetWeight) / duration;
     }
 
     function getDolaReserve() public view returns (uint) {
