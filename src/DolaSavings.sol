@@ -16,6 +16,7 @@ contract DolaSavings {
     IDBR public immutable dbr;
     IERC20 public immutable dola;
     address public gov;
+    address public pendingGov;
     address public operator;
     uint public constant mantissa = 10**18;
     uint public maxYearlyRewardBudget;
@@ -68,7 +69,12 @@ contract DolaSavings {
     }
 
     function setOperator(address _operator) public onlyGov { operator = _operator; }
-    function setGov(address _gov) public onlyGov { gov = _gov; }
+    function setPendingGov(address _gov) public onlyGov { pendingGov = _gov; }
+    function acceptGov() public {
+        require(msg.sender == pendingGov, "Only pendingGov");
+        gov = pendingGov;
+        pendingGov = address(0);
+    }
 
     function setMaxYearlyRewardBudget(uint _max) public onlyGov updateIndex(msg.sender) {
         require(_max < type(uint).max / 10000); // cannot overflow and revert within 10,000 years
@@ -88,6 +94,7 @@ contract DolaSavings {
     }
 
     function stake(uint amount, address recipient) public updateIndex(recipient) {
+        require(recipient != address(0), "Zero address");
         balanceOf[recipient] += amount;
         totalSupply += amount;
         dola.transferFrom(msg.sender, address(this), amount);
