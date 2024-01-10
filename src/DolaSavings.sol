@@ -75,29 +75,35 @@ contract DolaSavings {
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
             yearlyRewardBudget = _max;
+            emit SetYearlyRewardBudget(_max);
         }
+        emit SetMaxYearlyRewardBudget(_max);
     }
 
     function setMaxRewardPerDolaMantissa(uint _max) external onlyGov updateIndex(msg.sender) {
         require(_max < type(uint).max / (mantissa * 10 ** 13)); //May overflow if set to max and more than 10 trillion DOLA has been deposited
         maxRewardPerDolaMantissa = _max;
+        emit SetMaxRewardPerDolaMantissa(_max);
     }
 
     function setYearlyRewardBudget(uint _yearlyRewardBudget) external onlyOperator updateIndex(msg.sender) {
         require(_yearlyRewardBudget <= maxYearlyRewardBudget, "REWARD BUDGET ABOVE MAX");
         yearlyRewardBudget = _yearlyRewardBudget;
+        emit SetYearlyRewardBudget(_yearlyRewardBudget);
     }
 
     function stake(uint amount, address recipient) external updateIndex(recipient) {
         balanceOf[recipient] += amount;
         totalSupply += amount;
         dola.transferFrom(msg.sender, address(this), amount);
+        emit Stake(msg.sender, recipient, amount);
     }
 
     function unstake(uint amount) external updateIndex(msg.sender) {
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
         dola.transfer(msg.sender, amount);
+        emit Unstake(msg.sender, amount);
     }
 
     function claimable(address user) external view returns(uint) {
@@ -115,6 +121,7 @@ contract DolaSavings {
     function claim(address to) external updateIndex(msg.sender) {
         dbr.mint(to, accruedRewards[msg.sender]);
         accruedRewards[msg.sender] = 0;
+        emit Claim(msg.sender, to);
     }
 
     function sweep(address token, uint amount, address to) external onlyGov {
@@ -123,5 +130,13 @@ contract DolaSavings {
         }
         IERC20(token).transfer(to, amount);
     }
+
+    event Stake(address indexed caller, address indexed recipient, uint amount);
+    event Unstake(address indexed caller, uint amount);
+    event Claim(address indexed caller, address indexed recipient);
+
+    event SetYearlyRewardBudget(uint newYearlyRewardBudget);
+    event SetMaxRewardPerDolaMantissa(uint newMax);
+    event SetMaxYearlyRewardBudget(uint newMax);
 
 }
