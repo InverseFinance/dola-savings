@@ -69,11 +69,10 @@ contract sDola is ERC4626 {
         uint timeElapsed = block.timestamp - lastKUpdate;
         if(timeElapsed > duration) {
             return targetK;
-        } else {
-            uint targetWeight = timeElapsed;
-            uint prevWeight = duration - timeElapsed;
-            return (prevK * prevWeight + targetK * targetWeight) / duration;
         }
+        uint targetWeight = timeElapsed;
+        uint prevWeight = duration - timeElapsed;
+        return (prevK * prevWeight + targetK * targetWeight) / duration;
     }
 
     function getDolaReserve() public view returns (uint) {
@@ -89,6 +88,7 @@ contract sDola is ERC4626 {
         prevK = getK();
         targetK = _K;
         lastKUpdate = block.timestamp;
+        emit SetTargetK(_K);
     }
 
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
@@ -117,5 +117,6 @@ contract sDola is ERC4626 {
     }
 
     event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
+    event SetTargetK(uint newTargetK);
 
 }
