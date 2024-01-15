@@ -60,7 +60,7 @@ contract sDola is ERC4626 {
 
     function totalAssets() public view override returns (uint) {
         uint week = block.timestamp / 7 days;
-        uint timeElapsed = block.timestamp - (week * 7 days);
+        uint timeElapsed = block.timestamp % 7 days;
         uint remainingLastRevenue = weeklyRevenue[week - 1] * (7 days - timeElapsed) / 7 days;
         return savings.balanceOf(address(this)) - remainingLastRevenue - weeklyRevenue[week];
     }
@@ -80,6 +80,10 @@ contract sDola is ERC4626 {
         return getK() / getDbrReserve();
     }
 
+    function getDolaReserve(uint dbrReserve) public view returns (uint) {
+        return getK() / dbrReserve;
+    }
+
     function getDbrReserve() public view returns (uint) {
         return dbr.balanceOf(address(this)) + savings.claimable(address(this));
     }
@@ -95,9 +99,11 @@ contract sDola is ERC4626 {
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
         require(to != address(0), "Zero address");
         savings.claim(address(this));
-        uint dolaReserve = getDolaReserve() + exactDolaIn;
-        uint dbrReserve = getDbrReserve() - exactDbrOut;
-        require(dolaReserve * dbrReserve >= getK(), "Invariant");
+        uint k = getK();
+        uint dbrBalance = dbr.balanceOf(address(this));
+        uint dbrReserve = dbrBalance - exactDbrOut;
+        uint dolaReserve = k / dbrBalance + exactDolaIn;
+        require(dolaReserve * dbrReserve >= k, "Invariant");
         asset.transferFrom(msg.sender, address(this), exactDolaIn);
         savings.stake(exactDolaIn, address(this));
         weeklyRevenue[block.timestamp / 7 days] += exactDolaIn;
