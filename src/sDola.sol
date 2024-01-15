@@ -12,6 +12,12 @@ interface IDolaSavings {
     function dbr() external view returns (address);
 }
 
+interface IERC20 {
+    function transfer(address, uint) external returns (bool);
+    function transferFrom(address, address, uint) external returns (bool);
+    function balanceOf(address) external view returns (uint);
+}
+
 contract sDola is ERC4626 {
     
     uint constant MIN_BALANCE = 10**16; // 1 cent
@@ -63,11 +69,10 @@ contract sDola is ERC4626 {
         uint timeElapsed = block.timestamp - lastKUpdate;
         if(timeElapsed > duration) {
             return targetK;
-        } else {
-            uint targetWeight = timeElapsed;
-            uint prevWeight = duration - timeElapsed;
-            return (prevK * prevWeight + targetK * targetWeight) / duration;
         }
+        uint targetWeight = timeElapsed;
+        uint prevWeight = duration - timeElapsed;
+        return (prevK * prevWeight + targetK * targetWeight) / duration;
     }
 
     function getDolaReserve() public view returns (uint) {
@@ -83,6 +88,7 @@ contract sDola is ERC4626 {
         prevK = getK();
         targetK = _K;
         lastKUpdate = block.timestamp;
+        emit SetTargetK(_K);
     }
 
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
@@ -105,6 +111,12 @@ contract sDola is ERC4626 {
         asset.approve(address(savings), type(uint).max);
     }
 
+    function sweep(address token, uint amount, address to) public onlyGov {
+        require(address(dbr) != token, "Not authorized");
+        IERC20(token).transfer(to, amount);
+    }
+
     event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
+    event SetTargetK(uint newTargetK);
 
 }

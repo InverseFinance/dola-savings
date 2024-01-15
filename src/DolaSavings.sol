@@ -67,40 +67,46 @@ contract DolaSavings {
         lastUpdate = block.timestamp;
     }
 
-    function setOperator(address _operator) public onlyGov { operator = _operator; }
-    function setGov(address _gov) public onlyGov { gov = _gov; }
+    function setOperator(address _operator) external onlyGov { operator = _operator; }
+    function setGov(address _gov) external onlyGov { gov = _gov; }
 
-    function setMaxYearlyRewardBudget(uint _max) public onlyGov updateIndex(msg.sender) {
-        require(_max < type(uint).max / (365 days * 10_000 * mantissa)); // cannot overflow and revert within 10,000 years
+    function setMaxYearlyRewardBudget(uint _max) external onlyGov updateIndex(msg.sender) {
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
             yearlyRewardBudget = _max;
+            emit SetYearlyRewardBudget(_max);
         }
+        emit SetMaxYearlyRewardBudget(_max);
     }
 
-    function setMaxRewardPerDolaMantissa(uint _max) public onlyGov updateIndex(msg.sender) {
+    function setMaxRewardPerDolaMantissa(uint _max) external onlyGov updateIndex(msg.sender) {
+        require(_max < type(uint).max / (mantissa * 10 ** 13)); //May overflow if set to max and more than 10 trillion DOLA has been deposited
         maxRewardPerDolaMantissa = _max;
+        emit SetMaxRewardPerDolaMantissa(_max);
     }
 
-    function setYearlyRewardBudget(uint _yearlyRewardBudget) public onlyOperator updateIndex(msg.sender) {
+    function setYearlyRewardBudget(uint _yearlyRewardBudget) external onlyOperator updateIndex(msg.sender) {
         require(_yearlyRewardBudget <= maxYearlyRewardBudget, "REWARD BUDGET ABOVE MAX");
         yearlyRewardBudget = _yearlyRewardBudget;
+        emit SetYearlyRewardBudget(_yearlyRewardBudget);
     }
 
-    function stake(uint amount, address recipient) public updateIndex(recipient) {
+    function stake(uint amount, address recipient) external updateIndex(recipient) {
         require(recipient != address(0), "Zero address");
         balanceOf[recipient] += amount;
         totalSupply += amount;
         dola.transferFrom(msg.sender, address(this), amount);
+        emit Stake(msg.sender, recipient, amount);
     }
 
-    function unstake(uint amount) public updateIndex(msg.sender) {
+    function unstake(uint amount) external updateIndex(msg.sender) {
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
         dola.transfer(msg.sender, amount);
+        emit Unstake(msg.sender, amount);
     }
 
-    function claimable(address user) public view returns(uint) {
+    function claimable(address user) external view returns(uint) {
         uint deltaT = block.timestamp - lastUpdate;
         uint maxBudget = maxRewardPerDolaMantissa * totalSupply / mantissa;
         uint budget = yearlyRewardBudget > maxBudget ? maxBudget : yearlyRewardBudget;
@@ -112,16 +118,24 @@ contract DolaSavings {
         return (accruedRewards[user] + stakerDelta);
     }
 
-    function claim(address to) public updateIndex(msg.sender) {
+    function claim(address to) external updateIndex(msg.sender) {
         dbr.mint(to, accruedRewards[msg.sender]);
         accruedRewards[msg.sender] = 0;
+        emit Claim(msg.sender, to);
     }
 
-    function sweep(address token, uint amount, address to) public onlyGov {
+    function sweep(address token, uint amount, address to) external onlyGov {
         if(token == address(dola)) {
             require(IERC20(token).balanceOf(address(this)) - totalSupply >= amount, "CANNOT SWEEP USER DOLA");
         }
         IERC20(token).transfer(to, amount);
     }
 
+    event Stake(address indexed caller, address indexed recipient, uint amount);
+    event Unstake(address indexed caller, uint amount);
+    event Claim(address indexed caller, address indexed recipient);
+
+    event SetYearlyRewardBudget(uint newYearlyRewardBudget);
+    event SetMaxRewardPerDolaMantissa(uint newMax);
+    event SetMaxYearlyRewardBudget(uint newMax);
 }
