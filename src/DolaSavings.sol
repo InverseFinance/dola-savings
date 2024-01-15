@@ -71,7 +71,6 @@ contract DolaSavings {
     function setGov(address _gov) external onlyGov { gov = _gov; }
 
     function setMaxYearlyRewardBudget(uint _max) external onlyGov updateIndex(msg.sender) {
-        require(_max < type(uint).max / 10000); // cannot overflow and revert within 10,000 years
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
             yearlyRewardBudget = _max;
@@ -93,6 +92,7 @@ contract DolaSavings {
     }
 
     function stake(uint amount, address recipient) external updateIndex(recipient) {
+        require(recipient != address(0), "Zero address");
         balanceOf[recipient] += amount;
         totalSupply += amount;
         dola.transferFrom(msg.sender, address(this), amount);
@@ -138,5 +138,4 @@ contract DolaSavings {
     event SetYearlyRewardBudget(uint newYearlyRewardBudget);
     event SetMaxRewardPerDolaMantissa(uint newMax);
     event SetMaxYearlyRewardBudget(uint newMax);
-
 }
