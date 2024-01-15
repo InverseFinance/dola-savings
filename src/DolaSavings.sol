@@ -11,6 +11,10 @@ interface IDBR {
     function mint(address, uint) external;
 }
 
+/**
+ * @title DolaSavings
+ * @dev Smart contract for staking DOLA tokens to earn DBR rewards.
+ */
 contract DolaSavings {
 
     IDBR public immutable dbr;
@@ -29,7 +33,12 @@ contract DolaSavings {
     mapping (address => uint) public balanceOf;
     mapping (address => uint) public stakerIndexMantissa;
     mapping (address => uint) public accruedRewards;
-    
+ 
+    /**
+     * @dev Modifier to update the reward index for the whole contract as well as for a specific user.
+     * Calculates rewards based on the time elapsed and the total supply staked.
+     * @param user Address of the user for whom to update the index.
+     */
     modifier updateIndex(address user) {
         uint deltaT = block.timestamp - lastUpdate;
         if(deltaT > 0) {
@@ -62,6 +71,14 @@ contract DolaSavings {
         _;
     }
 
+    /**
+     * @dev Constructor for DolaSavings.
+     * @dev Important to do an initial mint of deadshares to prevent inflation attacks causing lossy rounding precision 
+     * @param _dbr Address of the DBR token contract.
+     * @param _dola Address of the DOLA token contract.
+     * @param _gov Address of governance.
+     * @param _operator Address of the operator.
+     */
     constructor (address _dbr, address _dola, address _gov, address _operator) {
         dbr = IDBR(_dbr);
         dola = IERC20(_dola);
@@ -78,6 +95,10 @@ contract DolaSavings {
         pendingGov = address(0);
     }
 
+    /**
+     * @dev Sets the maximum yearly reward budget.
+     * @param _max The maximum yearly reward budget.
+     */
     function setMaxYearlyRewardBudget(uint _max) external onlyGov updateIndex(msg.sender) {
         maxYearlyRewardBudget = _max;
         if(yearlyRewardBudget > _max) {
@@ -87,18 +108,31 @@ contract DolaSavings {
         emit SetMaxYearlyRewardBudget(_max);
     }
 
+    /**
+     * @dev Sets the maximum reward per DOLA in mantissa.
+     * @param _max The maximum reward per DOLA in mantissa.
+     */
     function setMaxRewardPerDolaMantissa(uint _max) external onlyGov updateIndex(msg.sender) {
         require(_max < type(uint).max / (mantissa * 10 ** 13)); //May overflow if set to max and more than 10 trillion DOLA has been deposited
         maxRewardPerDolaMantissa = _max;
         emit SetMaxRewardPerDolaMantissa(_max);
     }
 
+    /**
+     * @dev Sets the yearly reward budget.
+     * @param _yearlyRewardBudget The yearly reward budget.
+     */
     function setYearlyRewardBudget(uint _yearlyRewardBudget) external onlyOperator updateIndex(msg.sender) {
         require(_yearlyRewardBudget <= maxYearlyRewardBudget, "REWARD BUDGET ABOVE MAX");
         yearlyRewardBudget = _yearlyRewardBudget;
         emit SetYearlyRewardBudget(_yearlyRewardBudget);
     }
 
+    /**
+     * @dev Stakes DOLA tokens.
+     * @param amount The amount of DOLA tokens to stake.
+     * @param recipient The address of the recipient.
+     */
     function stake(uint amount, address recipient) external updateIndex(recipient) {
         require(recipient != address(0), "Zero address");
         balanceOf[recipient] += amount;
@@ -107,6 +141,10 @@ contract DolaSavings {
         emit Stake(msg.sender, recipient, amount);
     }
 
+    /**
+     * @dev Unstakes DOLA tokens.
+     * @param amount The amount of DOLA tokens to unstake.
+     */
     function unstake(uint amount) external updateIndex(msg.sender) {
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
@@ -114,6 +152,11 @@ contract DolaSavings {
         emit Unstake(msg.sender, amount);
     }
 
+    /**
+     * @dev Calculates the claimable rewards for a user.
+     * @param user The address of the user.
+     * @return The amount of claimable rewards.
+     */
     function claimable(address user) external view returns(uint) {
         uint _totalSupply = totalSupply;
         uint _yearlyRewardBudget = yearlyRewardBudget;
@@ -129,12 +172,23 @@ contract DolaSavings {
         return (accruedRewards[user] + stakerDelta);
     }
 
+    /**
+     * @dev Claims the accrued rewards of the msg.sender and mints DBR tokens to the specified address.
+     * @param to The address to receive the claimed DBR tokens.
+     */
     function claim(address to) external updateIndex(msg.sender) {
         dbr.mint(to, accruedRewards[msg.sender]);
         accruedRewards[msg.sender] = 0;
         emit Claim(msg.sender, to);
     }
 
+    /**
+     * @dev Transfers out any ERC20 tokens from the contract.
+     * Ensures that user staked DOLA cannot be swept.
+     * @param token The address of the ERC20 token to sweep.
+     * @param amount The amount of tokens to sweep.
+     * @param to The recipient address of the swept tokens.
+     */
     function sweep(address token, uint amount, address to) external onlyGov {
         if(token == address(dola)) {
             require(IERC20(token).balanceOf(address(this)) - totalSupply >= amount, "CANNOT SWEEP USER DOLA");
