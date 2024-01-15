@@ -73,7 +73,6 @@ contract DolaSavings {
 
     /**
      * @dev Constructor for DolaSavings.
-     * @dev Important to do an initial mint of deadshares to prevent inflation attacks causing lossy rounding precision 
      * @param _dbr Address of the DBR token contract.
      * @param _dola Address of the DOLA token contract.
      * @param _gov Address of governance.
