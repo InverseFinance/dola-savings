@@ -58,10 +58,16 @@ contract sDolaTest is Test {
 
     function test_setGov() public {
         vm.expectRevert("ONLY GOV");
-        sdola.setGov(address(0x3));
+        sdola.setPendingGov(address(0x3));
         vm.prank(gov);
-        sdola.setGov(address(0x3));
+        sdola.setPendingGov(address(0x3));
+        assertEq(sdola.pendingGov(), address(0x3));
+        vm.expectRevert("ONLY PENDINGGOV");
+        sdola.acceptGov();
+        vm.prank(address(0x3));
+        sdola.acceptGov();
         assertEq(sdola.gov(), address(0x3));
+        assertEq(sdola.pendingGov(), address(0));
     }
 
     function test_reapprove() public {

@@ -43,10 +43,16 @@ contract DolaSavingsTest is Test {
 
     function test_setGov() public {
         vm.expectRevert("ONLY GOV");
-        savings.setGov(address(0x3));
+        savings.setPendingGov(address(0x3));
         vm.prank(gov);
-        savings.setGov(address(0x3));
+        savings.setPendingGov(address(0x3));
+        assertEq(savings.pendingGov(), address(0x3));
+        vm.expectRevert("Only pendingGov");
+        savings.acceptGov();
+        vm.prank(address(0x3));
+        savings.acceptGov();
         assertEq(savings.gov(), address(0x3));
+        assertEq(savings.pendingGov(), address(0));
     }
 
     function test_setMaxYearlyRewardBudget() public {

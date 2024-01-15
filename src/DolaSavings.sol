@@ -16,6 +16,7 @@ contract DolaSavings {
     IDBR public immutable dbr;
     IERC20 public immutable dola;
     address public gov;
+    address public pendingGov;
     address public operator;
     uint public constant mantissa = 10**18;
     uint public maxYearlyRewardBudget;
@@ -68,7 +69,12 @@ contract DolaSavings {
     }
 
     function setOperator(address _operator) external onlyGov { operator = _operator; }
-    function setGov(address _gov) external onlyGov { gov = _gov; }
+    function setPendingGov(address _gov) external onlyGov { pendingGov = _gov; }
+    function acceptGov() external {
+        require(msg.sender == pendingGov, "Only pendingGov");
+        gov = pendingGov;
+        pendingGov = address(0);
+    }
 
     function setMaxYearlyRewardBudget(uint _max) external onlyGov updateIndex(msg.sender) {
         maxYearlyRewardBudget = _max;

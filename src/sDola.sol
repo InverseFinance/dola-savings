@@ -24,6 +24,7 @@ contract sDola is ERC4626 {
     IDolaSavings public immutable savings;
     ERC20 public immutable dbr;
     address public gov;
+    address public pendingGov;
     uint public prevK;
     uint public targetK;
     uint public lastKUpdate;
@@ -92,6 +93,7 @@ contract sDola is ERC4626 {
     }
 
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
+        require(to != address(0), "Zero address");
         savings.claim(address(this));
         uint dolaReserve = getDolaReserve() + exactDolaIn;
         uint dbrReserve = getDbrReserve() - exactDbrOut;
@@ -103,8 +105,14 @@ contract sDola is ERC4626 {
         emit Buy(msg.sender, to, exactDolaIn, exactDbrOut);
     }
 
-    function setGov(address _gov) external onlyGov {
-        gov = _gov;
+    function setPendingGov(address _gov) external onlyGov {
+        pendingGov = _gov;
+    }
+
+    function acceptGov() external {
+        require(msg.sender == pendingGov, "ONLY PENDINGGOV");
+        gov = pendingGov;
+        pendingGov = address(0);
     }
 
     function reapprove() external {
@@ -118,5 +126,4 @@ contract sDola is ERC4626 {
 
     event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
     event SetTargetK(uint newTargetK);
-
 }
