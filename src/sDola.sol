@@ -12,12 +12,19 @@ interface IDolaSavings {
     function dbr() external view returns (address);
 }
 
+interface IERC20 {
+    function transfer(address, uint) external returns (bool);
+    function transferFrom(address, address, uint) external returns (bool);
+    function balanceOf(address) external view returns (uint);
+}
+
 contract sDola is ERC4626 {
     
     uint constant MIN_BALANCE = 10**16; // 1 cent
     IDolaSavings public immutable savings;
     ERC20 public immutable dbr;
     address public gov;
+    address public pendingGov;
     uint public prevK;
     uint public targetK;
     uint public lastKUpdate;
@@ -63,11 +70,10 @@ contract sDola is ERC4626 {
         uint timeElapsed = block.timestamp - lastKUpdate;
         if(timeElapsed > duration) {
             return targetK;
-        } else {
-            uint targetWeight = timeElapsed;
-            uint prevWeight = duration - timeElapsed;
-            return (prevK * prevWeight + targetK * targetWeight) / duration;
         }
+        uint targetWeight = timeElapsed;
+        uint prevWeight = duration - timeElapsed;
+        return (prevK * prevWeight + targetK * targetWeight) / duration;
     }
 
     function getDolaReserve() public view returns (uint) {
@@ -87,9 +93,11 @@ contract sDola is ERC4626 {
         prevK = getK();
         targetK = _K;
         lastKUpdate = block.timestamp;
+        emit SetTargetK(_K);
     }
 
     function buyDBR(uint exactDolaIn, uint exactDbrOut, address to) external {
+        require(to != address(0), "Zero address");
         savings.claim(address(this));
         uint k = getK();
         uint dbrBalance = dbr.balanceOf(address(this));
@@ -103,14 +111,25 @@ contract sDola is ERC4626 {
         emit Buy(msg.sender, to, exactDolaIn, exactDbrOut);
     }
 
-    function setGov(address _gov) external onlyGov {
-        gov = _gov;
+    function setPendingGov(address _gov) external onlyGov {
+        pendingGov = _gov;
+    }
+
+    function acceptGov() external {
+        require(msg.sender == pendingGov, "ONLY PENDINGGOV");
+        gov = pendingGov;
+        pendingGov = address(0);
     }
 
     function reapprove() external {
         asset.approve(address(savings), type(uint).max);
     }
 
-    event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
+    function sweep(address token, uint amount, address to) public onlyGov {
+        require(address(dbr) != token, "Not authorized");
+        IERC20(token).transfer(to, amount);
+    }
 
+    event Buy(address indexed caller, address indexed to, uint exactDolaIn, uint exactDbrOut);
+    event SetTargetK(uint newTargetK);
 }
