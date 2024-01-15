@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT License
 pragma solidity 0.8.21;
 
 import "lib/solmate/src/mixins/ERC4626.sol";
@@ -21,6 +21,8 @@ interface IERC20 {
 /**
  * @title sDola
  * @dev Auto-compounding ERC4626 wrapper for DolaSacings utilizing xy=k auctions.
+ * WARNING: While this vault is safe to be used as collateral in lending markets, it should not be allowed as a borrowable asset.
+ * Any protocol in which sudden, large and atomic increases in the value of an asset may be a securit risk should not integrate this vault.
  */
 contract sDola is ERC4626 {
     
@@ -36,7 +38,7 @@ contract sDola is ERC4626 {
 
     /**
      * @dev Constructor for sDola contract.
-     * Important to make initial share mint high enough to avoid potential rounding issues.
+     * WARNING: Important to make initial share mint high enough to avoid potential rounding issues.
      * @param _dola Address of the DOLA token.
      * @param _savings Address of the DolaSavings contract.
      * @param _gov Address of the governance.
@@ -144,7 +146,7 @@ contract sDola is ERC4626 {
 
     /**
      * @dev Allows users to buy DBR with DOLA.
-     * Never expose this directly to a UI as it's likely to cause a loss unless a transaction is executed immediately.
+     * WARNING: Never expose this directly to a UI as it's likely to cause a loss unless a transaction is executed immediately.
      * Instead use the sDolaHelper function or custom smart contract code.
      * @param exactDolaIn The exact amount of DOLA to spend.
      * @param exactDbrOut The exact amount of DBR to receive.
