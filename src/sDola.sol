@@ -40,7 +40,7 @@ contract sDola is ERC4626 {
 
     /**
      * @dev Constructor for sDola contract.
-     * WARNING: Important to make initial share mint high enough to avoid potential rounding issues.
+     * WARNING: MIN_SHARES will always be unwithdrawable from the vault. Deployer should deposit enough to mint MIN_SHARES to avoid causing user grief.
      * @param _dola Address of the DOLA token.
      * @param _savings Address of the DolaSavings contract.
      * @param _gov Address of the governance.
