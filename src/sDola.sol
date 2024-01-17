@@ -77,6 +77,7 @@ contract sDola is ERC4626 {
     /**
      * @dev Hook that is called before tokens are withdrawn from the contract.
      * @param assets The amount of assets to withdraw.
+     * @param shares The amount of shares to withdraw
      */
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         require(totalAssets() >= assets + MIN_BALANCE, "Insufficient assets");
