@@ -145,6 +145,14 @@ contract DolaSavings {
      * @param amount The amount of DOLA tokens to unstake.
      */
     function unstake(uint amount) external updateIndex(msg.sender) {
+        _unstake(amount);
+    }
+
+    /**
+     * @dev Unstakes DOLA tokens.
+     * @param amount The amount of DOLA tokens to unstake.
+     */
+    function _unstake(uint amount) internal {
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
         dola.transfer(msg.sender, amount);
@@ -176,9 +184,27 @@ contract DolaSavings {
      * @param to The address to receive the claimed DBR tokens.
      */
     function claim(address to) external updateIndex(msg.sender) {
-        dbr.mint(to, accruedRewards[msg.sender]);
+        _claim(to);
+    }
+
+    /**
+     * @dev Claims the accrued rewards of the msg.sender and mints DBR tokens to the specified address.
+     * @param to The address to receive the claimed DBR tokens.
+     */
+    function _claim(address to) internal {
+        uint accrued = accruedRewards[msg.sender];
+        dbr.mint(to, accrued);
         accruedRewards[msg.sender] = 0;
-        emit Claim(msg.sender, to);
+        emit Claim(msg.sender, to, accrued);
+    }
+
+    /**
+     * @dev Claims the accrued rewards to msg.sender before unstaking amount.
+     * @param amount Amount of DOLA to unstake.
+     */
+    function claimAndUnstake(uint amount) external updateIndex(msg.sender) {
+        _claim(msg.sender);
+        _unstake(amount);
     }
 
     /**
