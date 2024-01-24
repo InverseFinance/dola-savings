@@ -195,7 +195,7 @@ contract DolaSavings {
         uint accrued = accruedRewards[msg.sender];
         dbr.mint(to, accrued);
         accruedRewards[msg.sender] = 0;
-        emit Claim(msg.sender, to);
+        emit Claim(msg.sender, to, accrued);
     }
 
     /**
@@ -223,7 +223,7 @@ contract DolaSavings {
 
     event Stake(address indexed caller, address indexed recipient, uint amount);
     event Unstake(address indexed caller, uint amount);
-    event Claim(address indexed caller, address indexed recipient);
+    event Claim(address indexed caller, address indexed recipient, uint claimed);
 
     event SetYearlyRewardBudget(uint newYearlyRewardBudget);
     event SetMaxRewardPerDolaMantissa(uint newMax);

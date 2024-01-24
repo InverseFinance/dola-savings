@@ -27,6 +27,8 @@ interface IERC20 {
 contract sDola is ERC4626 {
     
     uint constant MIN_BALANCE = 10**16; // 1 cent
+    uint constant MIN_SHARES = 10**18;
+    uint constant MAX_ASSETS = 10**32; // 100 trillion DOLA
     IDolaSavings public immutable savings;
     ERC20 public immutable dbr;
     address public gov;
@@ -38,7 +40,7 @@ contract sDola is ERC4626 {
 
     /**
      * @dev Constructor for sDola contract.
-     * WARNING: Important to make initial share mint high enough to avoid potential rounding issues.
+     * WARNING: MIN_SHARES will always be unwithdrawable from the vault. Deployer should deposit enough to mint MIN_SHARES to avoid causing user grief.
      * @param _dola Address of the DOLA token.
      * @param _savings Address of the DolaSavings contract.
      * @param _gov Address of the governance.
@@ -68,15 +70,18 @@ contract sDola is ERC4626 {
      * @param assets The amount of assets that were deposited.
      */    
     function afterDeposit(uint256 assets, uint256) internal override {
+        require(totalSupply >= MIN_SHARES, "Shares below MIN_SHARES");
         savings.stake(assets, address(this));
     }
 
     /**
      * @dev Hook that is called before tokens are withdrawn from the contract.
      * @param assets The amount of assets to withdraw.
+     * @param shares The amount of shares to withdraw
      */
-    function beforeWithdraw(uint256 assets, uint256) internal override {
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override {
         require(totalAssets() >= assets + MIN_BALANCE, "Insufficient assets");
+        require(totalSupply - shares >= MIN_SHARES, "Shares below MIN_SHARES");
         savings.unstake(assets);
     }
 
@@ -89,7 +94,8 @@ contract sDola is ERC4626 {
         uint week = block.timestamp / 7 days;
         uint timeElapsed = block.timestamp % 7 days;
         uint remainingLastRevenue = weeklyRevenue[week - 1] * (7 days - timeElapsed) / 7 days;
-        return savings.balanceOf(address(this)) - remainingLastRevenue - weeklyRevenue[week];
+        uint actualAssets = savings.balanceOf(address(this)) - remainingLastRevenue - weeklyRevenue[week];
+        return actualAssets < MAX_ASSETS ? actualAssets : MAX_ASSETS;
     }
 
     /**
