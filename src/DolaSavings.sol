@@ -195,7 +195,7 @@ contract DolaSavings {
         uint accrued = accruedRewards[msg.sender];
         dbr.mint(to, accrued);
         accruedRewards[msg.sender] = 0;
-        emit Claim(msg.sender, to, accrued);
+        emit Claim(msg.sender, to);
     }
 
     /**
