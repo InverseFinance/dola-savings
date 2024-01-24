@@ -27,8 +27,8 @@ interface IERC20 {
 contract sDola is ERC4626 {
     
     uint constant MIN_BALANCE = 10**16; // 1 cent
-    uint constant MIN_SHARES = 10**18;
-    uint constant MAX_ASSETS = 10**32; // 100 trillion DOLA
+    uint public constant MIN_SHARES = 10**18;
+    uint public constant MAX_ASSETS = 10**32; // 100 trillion DOLA
     IDolaSavings public immutable savings;
     ERC20 public immutable dbr;
     address public gov;

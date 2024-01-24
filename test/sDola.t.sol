@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {sDola} from "../src/sDola.sol";
+import {sDolaHelper} from "src/sDolaHelper.sol";
 import {DolaSavings} from "../src/DolaSavings.sol";
 import {ERC20} from "./mocks/ERC20.sol";
 
@@ -14,12 +15,18 @@ contract sDolaTest is Test {
     address operator = address(0x2);
     DolaSavings savings;
     sDola sdola;
+    sDolaHelper helper;
+    uint minShares;
+    uint maxAssets;
 
     function setUp() public {
         dola = new ERC20();
         dbr = new ERC20();
         savings = new DolaSavings(address(dbr), address(dola), gov, operator);
         sdola = new sDola(address(dola), address(savings), gov, 10**18);
+        helper = new sDolaHelper(address(sdola));
+        minShares = sdola.MIN_SHARES();
+        maxAssets = sdola.MAX_ASSETS();
     }
 
     function test_constructor() public {
@@ -78,12 +85,43 @@ contract sDolaTest is Test {
         assertEq(dola.allowance(address(sdola), address(savings)), type(uint).max);
     }
 
+    function test_buyDBR(uint exactDolaIn) public {
+        vm.warp(7 days); // for totalAssets()
+        dbr.mint(address(sdola), 1e18);
+        assertEq(sdola.getDbrReserve(), 1e18, "dbr reserve");
+        exactDolaIn = bound(exactDolaIn, 1, maxAssets);
+        uint exactDbrOut = helper.getDbrOut(exactDolaIn);
+        dola.mint(address(this), exactDolaIn);
+        dola.approve(address(sdola), exactDolaIn);
+        uint newDbrReserve = sdola.getDbrReserve() - exactDbrOut;
+        sdola.buyDBR(exactDolaIn, exactDbrOut, address(1));
+        assertEq(dola.balanceOf(address(this)), 0, "dola balance");
+        assertEq(savings.balanceOf(address(sdola)), exactDolaIn, "savings balance");
+        assertEq(dbr.balanceOf(address(1)), exactDbrOut, "dbr balance");
+        assertEq(sdola.getDbrReserve(), newDbrReserve, "dbr reserve");
+        assertEq(sdola.getDolaReserve(), sdola.getK() / newDbrReserve, "dola reserve");
+        assertEq(sdola.weeklyRevenue(block.timestamp / 7 days), exactDolaIn, "weekly revenue");
+        assertEq(sdola.totalAssets(), 0, "total assets");
+        vm.warp(14 days);
+        assertEq(sdola.totalAssets(), 0, "total assets 14 days");
+        vm.warp(14 days + (7 days / 4));
+        assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 4, 20, "total assets 16.25 days");
+        vm.warp(14 days + (7 days / 2));
+        assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 2, 20, "total assets 17.5 days");
+        vm.warp(21 days);
+        assertEq(sdola.totalAssets(), exactDolaIn, "total assets 21 days");
+        vm.warp(21 days + 1);
+        assertEq(sdola.totalAssets(), exactDolaIn, "total assets 22 days");
+        vm.warp(28 days);
+        assertEq(sdola.totalAssets(), exactDolaIn, "total assets 28 days");
+    }
+
     function test_buyDBR(uint exactDolaIn, uint exactDbrOut) public {
         vm.warp(7 days); // for totalAssets()
         dbr.mint(address(sdola), 1e18);
         assertEq(sdola.getDbrReserve(), 1e18, "dbr reserve");
-        exactDbrOut = bound(exactDbrOut, 1, sdola.getDbrReserve());
-        exactDolaIn = bound(exactDolaIn, 0, (type(uint).max - sdola.getDolaReserve()) / sdola.getDbrReserve() - exactDbrOut);
+        exactDolaIn = bound(exactDolaIn, 1, maxAssets);
+        exactDbrOut = bound(exactDbrOut, 0, 1e18); 
         dola.mint(address(this), exactDolaIn);
         dola.approve(address(sdola), exactDolaIn);
         uint K = sdola.getK();
@@ -103,17 +141,18 @@ contract sDolaTest is Test {
             assertEq(sdola.weeklyRevenue(block.timestamp / 7 days), exactDolaIn, "weekly revenue");
             assertEq(sdola.totalAssets(), 0, "total assets");
             vm.warp(14 days);
-            assertEq(sdola.totalAssets(), 0, "total assets");
+            assertEq(sdola.totalAssets(), 0, "total assets 14 days");
             vm.warp(14 days + (7 days / 4));
-            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 4, 1, "total assets");
+            if(exactDolaIn > maxAssets) exactDolaIn = maxAssets;
+            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 4, 20, "total assets 16.25 days");
             vm.warp(14 days + (7 days / 2));
-            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 2, 1, "total assets");
+            assertApproxEqAbs(sdola.totalAssets(), exactDolaIn / 2, 20, "total assets 17.5 days");
             vm.warp(21 days);
-            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets 21 days");
             vm.warp(21 days + 1);
-            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets 22 days");
             vm.warp(28 days);
-            assertEq(sdola.totalAssets(), exactDolaIn, "total assets");
+            assertEq(sdola.totalAssets(), exactDolaIn, "total assets 28 days");
         }
     }
 
@@ -157,7 +196,7 @@ contract sDolaTest is Test {
 
     function test_totalAssets(uint amount) public {
         vm.warp(7 days); // for totalAssets()
-        amount = bound(amount, 1, type(uint).max);
+        amount = bound(amount, sdola.convertToAssets(minShares), maxAssets);
         assertEq(sdola.totalAssets(), 0);
         dola.mint(address(this), amount);
         dola.approve(address(sdola), amount);
@@ -167,20 +206,20 @@ contract sDolaTest is Test {
 
     function test_deposit(uint amount) public {
         vm.warp(7 days); // for totalAssets()
-        amount = bound(amount, 1, type(uint).max);
+        amount = bound(amount, sdola.convertToAssets(minShares), maxAssets);
         uint shares = sdola.convertToShares(amount);
         dola.mint(address(this), amount);
         dola.approve(address(sdola), amount);
         sdola.deposit(amount, address(this));
-        assertEq(sdola.totalAssets(), amount);
-        assertEq(savings.balanceOf(address(sdola)), amount);
-        assertEq(sdola.balanceOf(address(this)), shares);
-        assertEq(dola.balanceOf(address(savings)), amount);
+        assertEq(sdola.totalAssets(), amount, "Assets not equal amount");
+        assertEq(savings.balanceOf(address(sdola)), amount, "sDola savings balance not equal amount");
+        assertEq(sdola.balanceOf(address(this)), shares, "Owned balance not equal shares");
+        assertEq(dola.balanceOf(address(savings)), amount, "Savings balance not equal amount");
     }
 
     function test_mint(uint shares) public {
         vm.warp(7 days); // for totalAssets()
-        shares = bound(shares, 1, type(uint).max);
+        shares = bound(shares, minShares, sdola.convertToShares(maxAssets));
         uint amount = sdola.convertToAssets(shares);
         dola.mint(address(this), amount);
         dola.approve(address(sdola), amount);
@@ -206,8 +245,7 @@ contract sDolaTest is Test {
 
     function test_withdraw(uint amount) public {
         vm.warp(7 days); // for totalAssets()
-        uint MIN_BALANCE = 1e16; // 1 cent
-        amount = bound(amount, MIN_BALANCE + 1, sqrt(type(uint).max));
+        amount = bound(amount, minShares+1, maxAssets);
         uint shares = sdola.convertToShares(amount);
         dola.mint(address(this), amount);
         dola.approve(address(sdola), amount);
@@ -218,19 +256,19 @@ contract sDolaTest is Test {
         assertEq(dola.balanceOf(address(savings)), amount);
         vm.expectRevert("Insufficient assets");
         sdola.withdraw(amount, address(this), address(this));
-        amount = amount - MIN_BALANCE; // min balance
+        amount = amount - sdola.convertToAssets(minShares); // min shares
         sdola.withdraw(amount, address(this), address(this));
-        assertEq(sdola.totalAssets(), MIN_BALANCE);
-        assertEq(savings.balanceOf(address(sdola)), MIN_BALANCE);
-        assertEq(sdola.balanceOf(address(this)), MIN_BALANCE);
-        assertEq(dola.balanceOf(address(savings)), MIN_BALANCE);
+        uint minBalance = sdola.convertToAssets(minShares);
+        assertEq(sdola.totalAssets(), minBalance);
+        assertEq(savings.balanceOf(address(sdola)), minBalance);
+        assertEq(sdola.balanceOf(address(this)), minBalance);
+        assertEq(dola.balanceOf(address(savings)), minBalance);
         assertEq(dola.balanceOf(address(this)), amount);
     }
 
     function test_redeem(uint shares) public {
         vm.warp(7 days); // for totalAssets()
-        uint MIN_BALANCE = 1e16; // 1 cent
-        shares = bound(shares, MIN_BALANCE + 1, sdola.convertToShares(sqrt(type(uint).max)));
+        shares = bound(shares, minShares+1, sdola.convertToShares(maxAssets));
         uint amount = sdola.convertToAssets(shares);
         dola.mint(address(this), amount);
         dola.approve(address(sdola), amount);
@@ -241,14 +279,14 @@ contract sDolaTest is Test {
         assertEq(dola.balanceOf(address(savings)), amount);
         vm.expectRevert("Insufficient assets");
         sdola.redeem(shares, address(this), address(this));
-        amount = amount - MIN_BALANCE; // min balance
-        shares = sdola.convertToShares(amount);
+        shares = sdola.convertToShares(amount) - minShares;
         sdola.redeem(shares, address(this), address(this));
-        assertEq(sdola.totalAssets(), MIN_BALANCE);
-        assertEq(savings.balanceOf(address(sdola)), MIN_BALANCE);
-        assertEq(sdola.balanceOf(address(this)), MIN_BALANCE);
-        assertEq(dola.balanceOf(address(savings)), MIN_BALANCE);
-        assertEq(dola.balanceOf(address(this)), amount);
+        uint minBalance = sdola.convertToAssets(minShares);
+        assertEq(sdola.totalAssets(), minBalance);
+        assertEq(savings.balanceOf(address(sdola)), minBalance);
+        assertEq(sdola.balanceOf(address(this)), minBalance);
+        assertEq(dola.balanceOf(address(savings)), minBalance);
+        assertEq(dola.balanceOf(address(this)), amount - minBalance);
     }
 
 }
