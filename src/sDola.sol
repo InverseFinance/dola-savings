@@ -33,6 +33,7 @@ contract sDola is ERC4626 {
     ERC20 public immutable dbr;
     address public gov;
     address public pendingGov;
+    address public operator;
     uint public prevK;
     uint public targetK;
     uint public lastKUpdate;
@@ -50,18 +51,25 @@ contract sDola is ERC4626 {
         address _dola,
         address _savings,
         address _gov,
+        address _operator,
         uint _K
-    ) ERC4626(ERC20(_dola), "Super Dola", "sDOLA") {
+    ) ERC4626(ERC20(_dola), "Staked Dola", "sDOLA") {
         require(_K > 0, "_K must be positive");
         savings = IDolaSavings(_savings);
         dbr = ERC20(IDolaSavings(_savings).dbr());
         gov = _gov;
+        operator = _operator;
         targetK = _K;
         asset.approve(_savings, type(uint).max);
     }
 
     modifier onlyGov() {
         require(msg.sender == gov, "ONLY GOV");
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(msg.sender == gov || msg.sender == operator, "ONLY OPERATOR");
         _;
     }
 
@@ -142,7 +150,7 @@ contract sDola is ERC4626 {
      * @dev Sets a new target K value.
      * @param _K The new target K value.
      */
-    function setTargetK(uint _K) external onlyGov {
+    function setTargetK(uint _K) external onlyOperator {
         require(_K > getDbrReserve(), "K must be larger than dbr reserve");
         prevK = getK();
         targetK = _K;
@@ -179,6 +187,14 @@ contract sDola is ERC4626 {
      */
     function setPendingGov(address _gov) external onlyGov {
         pendingGov = _gov;
+    }
+
+    /**
+     * @dev Sets a new operator address.
+     * @param _operator New operator address.
+     */
+    function setOperator(address _operator) external onlyGov {
+        operator = _operator;
     }
 
     /**

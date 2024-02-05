@@ -23,7 +23,7 @@ contract sDolaTest is Test {
         dola = new ERC20();
         dbr = new ERC20();
         savings = new DolaSavings(address(dbr), address(dola), gov, operator);
-        sdola = new sDola(address(dola), address(savings), gov, 10**18);
+        sdola = new sDola(address(dola), address(savings), gov, operator, 10**18);
         helper = new sDolaHelper(address(sdola));
         minShares = sdola.MIN_SHARES();
         maxAssets = sdola.MAX_ASSETS();
@@ -34,6 +34,7 @@ contract sDolaTest is Test {
         assertEq(sdola.symbol(), "sDOLA");
         assertEq(sdola.decimals(), 18);
         assertEq(sdola.gov(), gov);
+        assertEq(sdola.operator(), operator);
         assertEq(address(sdola.savings()), address(savings));
         assertEq(address(sdola.asset()), address(dola));
         assertEq(address(sdola.dbr()), address(dbr));
@@ -49,7 +50,7 @@ contract sDolaTest is Test {
     function test_setTargetK(uint _K) public {
         if(_K > sdola.getDbrReserve()) {
             uint prevK = sdola.getK();
-            vm.expectRevert("ONLY GOV");
+            vm.expectRevert("ONLY OPERATOR");
             sdola.setTargetK(_K);
             vm.prank(gov);
             sdola.setTargetK(_K);
@@ -57,7 +58,7 @@ contract sDolaTest is Test {
             assertEq(sdola.prevK(), prevK);
             assertEq(sdola.lastKUpdate(), block.timestamp);
         } else {
-            vm.startPrank(gov);
+            vm.startPrank(operator);
             vm.expectRevert("K must be larger than dbr reserve");
             sdola.setTargetK(_K);
         }
