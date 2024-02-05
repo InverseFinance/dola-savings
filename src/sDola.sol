@@ -53,7 +53,7 @@ contract sDola is ERC4626 {
         address _gov,
         address _operator,
         uint _K
-    ) ERC4626(ERC20(_dola), "Super Dola", "sDOLA") {
+    ) ERC4626(ERC20(_dola), "Staked Dola", "sDOLA") {
         require(_K > 0, "_K must be positive");
         savings = IDolaSavings(_savings);
         dbr = ERC20(IDolaSavings(_savings).dbr());

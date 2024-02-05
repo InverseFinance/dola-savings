@@ -52,7 +52,7 @@ contract sDolaTest is Test {
             uint prevK = sdola.getK();
             vm.expectRevert("ONLY OPERATOR");
             sdola.setTargetK(_K);
-            vm.prank(operator);
+            vm.prank(gov);
             sdola.setTargetK(_K);
             assertEq(sdola.targetK(), _K);
             assertEq(sdola.prevK(), prevK);

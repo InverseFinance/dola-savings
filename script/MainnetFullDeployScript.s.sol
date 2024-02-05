@@ -14,21 +14,16 @@ contract MainnetFullDeployScript is Script {
         address dola = 0x865377367054516e17014CcdED1e7d814EDC9ce4;
         address gov = 0x926dF14a23BE491164dCF93f4c468A50ef659D5B;
         address operator = 0x8F97cCA30Dbe80e7a8B462F1dD1a51C32accDfC8;
-        uint K = 1;
+        address savings = 0xE5f24791E273Cb96A1f8E5B67Bc2397F0AD9B8B4;
+        uint K = 325*10**42;
 
         vm.startBroadcast();
-        DolaSavings savings = new DolaSavings(
-            dbr,
-            dola,
-            gov,
-            operator
-        );
 
         sDola sdola = new sDola(
             dola,
             address(savings),
             gov,
-            operator,
+            address(0),
             K
         
         );
