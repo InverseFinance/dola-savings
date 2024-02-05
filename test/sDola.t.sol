@@ -255,7 +255,7 @@ contract sDolaTest is Test {
         assertEq(savings.balanceOf(address(sdola)), amount);
         assertEq(sdola.balanceOf(address(this)), shares);
         assertEq(dola.balanceOf(address(savings)), amount);
-        vm.expectRevert("Insufficient assets");
+        vm.expectRevert("Shares below MIN_SHARES");
         sdola.withdraw(amount, address(this), address(this));
         amount = amount - sdola.convertToAssets(minShares); // min shares
         sdola.withdraw(amount, address(this), address(this));
@@ -278,7 +278,7 @@ contract sDolaTest is Test {
         assertEq(savings.balanceOf(address(sdola)), amount);
         assertEq(sdola.balanceOf(address(this)), shares);
         assertEq(dola.balanceOf(address(savings)), amount);
-        vm.expectRevert("Insufficient assets");
+        vm.expectRevert("Shares below MIN_SHARES");
         sdola.redeem(shares, address(this), address(this));
         shares = sdola.convertToShares(amount) - minShares;
         sdola.redeem(shares, address(this), address(this));

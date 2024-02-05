@@ -26,7 +26,6 @@ interface IERC20 {
  */
 contract sDola is ERC4626 {
     
-    uint constant MIN_BALANCE = 10**16; // 1 cent
     uint public constant MIN_SHARES = 10**18;
     uint public constant MAX_ASSETS = 10**32; // 100 trillion DOLA
     IDolaSavings public immutable savings;
@@ -88,7 +87,6 @@ contract sDola is ERC4626 {
      * @param shares The amount of shares to withdraw
      */
     function beforeWithdraw(uint256 assets, uint256 shares) internal override {
-        require(totalAssets() >= assets + MIN_BALANCE, "Insufficient assets");
         require(totalSupply - shares >= MIN_SHARES, "Shares below MIN_SHARES");
         savings.unstake(assets);
     }
