@@ -30,7 +30,7 @@ contract sDolaTest is Test {
     }
 
     function test_constructor() public {
-        assertEq(sdola.name(), "Super Dola");
+        assertEq(sdola.name(), "Staked Dola");
         assertEq(sdola.symbol(), "sDOLA");
         assertEq(sdola.decimals(), 18);
         assertEq(sdola.gov(), gov);
